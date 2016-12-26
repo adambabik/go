@@ -8,4 +8,7 @@ install:
 	govendor sync
 
 test:
-	govendor test +local -v -short
+	govendor test -v +local
+
+test_short:
+	govendor test -v -short +local

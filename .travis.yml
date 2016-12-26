@@ -1,0 +1,25 @@
+notifications:
+  email: false
+
+branches:
+  only:
+  - master
+
+sudo: required
+
+language: go
+
+go:
+- latest
+- 1.7
+- 1.6
+
+services:
+  - docker
+
+install:
+  - make install
+  - docker build -t adambabik/go-collections .
+
+script:
+  - make test

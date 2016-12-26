@@ -18,11 +18,11 @@ func init() {
 }
 
 func main() {
-	config := config.NewConfigFromFile(*configFilename)
-	config.UpdateFromEnv()
+	c := config.NewConfigFromFile(*configFilename)
+	config.UpdateFromEnv(c)
 
 	e := echo.New()
-	e.Debug = config.Debug
+	e.Debug = c.Debug
 
 	e.Use(middleware.Logger())
 
