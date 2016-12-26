@@ -1,0 +1,9 @@
+root = true
+
+[{package.json,*.yml}]
+indent_style = space
+indent_size = 2
+
+[{Makefile,*.go}]
+indent_style = tab
+indent_size = 4

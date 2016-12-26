@@ -2,9 +2,12 @@ package config
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"os"
+	"reflect"
 	"strconv"
+	"strings"
 )
 
 type (
@@ -24,6 +27,11 @@ var (
 		Debug: false,
 	}
 )
+
+// NewConfig returns a new config object.
+func NewConfig(debug bool) *Config {
+	return &Config{Debug: debug}
+}
 
 // NewConfigFromFile returns a Config object read from a filename.
 func NewConfigFromFile(filename string) *Config {
@@ -50,9 +58,55 @@ func NewConfigFromFile(filename string) *Config {
 
 // UpdateFromEnv reads config properties from env variables.
 // It's safer to load sensitive data from env instead of a file.
-func (c *Config) UpdateFromEnv() {
-	if debug, ok := os.LookupEnv("DEBUG"); ok {
-		debugBool, _ := strconv.ParseBool(debug)
-		c.Debug = debugBool
+func UpdateFromEnv(c interface{}) {
+	cv := reflect.ValueOf(c).Elem()
+
+	for i := 0; i < cv.NumField(); i++ {
+		field := cv.Field(i)
+		jsonTag := cv.Type().Field(i).Tag.Get("json")
+		if jsonTag == "" || jsonTag == "-" {
+			continue
+		}
+
+		loadFromEnv(field, tagName(jsonTag))
+	}
+}
+
+func tagName(tag string) string {
+	if idx := strings.Index(tag, ","); idx != -1 {
+		return tag[:idx]
+	}
+	return tag
+}
+
+func loadFromEnv(field reflect.Value, name string) {
+	value, ok := os.LookupEnv(strings.ToUpper(name))
+	if !ok {
+		return
+	}
+
+	switch field.Interface().(type) {
+	case bool:
+		valBool, err := strconv.ParseBool(value)
+		if err != nil {
+			panic(err)
+		}
+		field.SetBool(valBool)
+	case int:
+		valInt, err := strconv.ParseInt(value, 0, strconv.IntSize)
+		if err != nil {
+			panic(err)
+		}
+		field.SetInt(valInt)
+	case float64:
+		valFloat, err := strconv.ParseFloat(value, 64)
+		if err != nil {
+			panic(err)
+		}
+		field.SetFloat(valFloat)
+	case string:
+		field.SetString(value)
+	default:
+		panic(fmt.Sprintf("Invalid field type: %T", field.Interface()))
 	}
 }
