@@ -141,11 +141,11 @@ func (p *Pool) RunContainerWithOpts(
 // RunMultipleContainers spawns multiple containers asynchronously.
 func (p *Pool) RunMultipleContainers(
 	opts []dc.CreateContainerOptions,
-) ([]*dc.Container, error) {
+) (ContainerList, error) {
 	var wg sync.WaitGroup
 	var rw sync.RWMutex
 
-	containers := make([]*dc.Container, 0, len(opts))
+	containers := make(ContainerList, 0, len(opts))
 	errCh := make(chan error, len(opts))
 
 	// Async containers setup.
@@ -173,7 +173,7 @@ func (p *Pool) RunMultipleContainers(
 }
 
 // PurgeContainers removes containers passed as in the argument.
-func (p *Pool) PurgeContainers(containers []*dc.Container) error {
+func (p *Pool) PurgeContainers(containers ContainerList) error {
 	var wg sync.WaitGroup
 	errCh := make(chan error, len(containers))
 

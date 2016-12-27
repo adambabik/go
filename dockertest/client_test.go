@@ -283,8 +283,8 @@ func TestGetPort(t *testing.T) {
 	if assert.NoError(t, err) {
 		container, err := pool.RunContainer(testLocalImage, nil, false)
 		if assert.NoError(t, err) {
-			assert.NotEmpty(t, GetPort(container, "8080/tcp"))
-			assert.Empty(t, GetPort(container, "8081/tcp"))
+			assert.NotEmpty(t, GetPort(container, "8888/tcp"))
+			assert.Empty(t, GetPort(container, "8889/tcp"))
 		}
 		err = pool.PurgeAll()
 		assert.NoError(t, err)
@@ -297,19 +297,19 @@ func TestGetServiceAddr(t *testing.T) {
 		container, err := pool.RunContainerWithOpts(dc.CreateContainerOptions{
 			Config: &dc.Config{
 				Image:        testLocalImage,
-				ExposedPorts: map[dc.Port]struct{}{"8080/tcp": {}},
+				ExposedPorts: map[dc.Port]struct{}{"8888/tcp": {}},
 			},
 			HostConfig: &dc.HostConfig{
 				PortBindings: map[dc.Port][]dc.PortBinding{
-					"8080/tcp": []dc.PortBinding{
-						dc.PortBinding{HostPort: "8080"},
+					"8888/tcp": []dc.PortBinding{
+						dc.PortBinding{HostPort: "8888"},
 					},
 				},
 			},
 		})
 		if assert.NoError(t, err) {
-			addr := GetServiceAddr(container, "8080/tcp")
-			assert.Equal(t, "http://127.0.0.1:8080", addr)
+			addr := GetServiceAddr(container, "8888/tcp")
+			assert.Equal(t, "http://127.0.0.1:8888", addr)
 		}
 		err = pool.PurgeAll()
 		assert.NoError(t, err)

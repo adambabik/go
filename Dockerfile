@@ -13,7 +13,7 @@ WORKDIR /go/src/github.com/adambabik/go-collections
 RUN make install && rm -rf /go/.cache
 RUN go-wrapper install
 
-EXPOSE 8080
+EXPOSE 8888
 ENTRYPOINT ["/docker-entrypoint.sh"]
 
 CMD ["go-collections"]
