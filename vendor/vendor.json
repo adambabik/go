@@ -209,18 +209,14 @@
 		{
 			"checksumSHA1": "67x53Ku9BgotBY0yXaJeG5Cm+9w=",
 			"path": "github.com/labstack/echo",
-			"revision": "8d504c1b699c757b267255c53b3e5219f9974abc",
-			"revisionTime": "2016-12-02T17:28:18Z",
-			"version": "v3",
-			"versionExact": "v3.0.3"
+			"revision": "ff8a3bdc949d297aba8e1adb6a55d2d74a228f39",
+			"revisionTime": "2016-12-05T03:20:08Z"
 		},
 		{
 			"checksumSHA1": "oNQ9DfXQgvBwmcGr2iAE5YW06YY=",
 			"path": "github.com/labstack/echo/middleware",
-			"revision": "8d504c1b699c757b267255c53b3e5219f9974abc",
-			"revisionTime": "2016-12-02T17:28:18Z",
-			"version": "v3",
-			"versionExact": "v3.0.3"
+			"revision": "ff8a3bdc949d297aba8e1adb6a55d2d74a228f39",
+			"revisionTime": "2016-12-05T03:20:08Z"
 		},
 		{
 			"checksumSHA1": "NvfQq6Y6kh9cMw+y1m00ivEd5b4=",
