@@ -2,11 +2,12 @@ package dockertest
 
 import (
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
 	dc "github.com/fsouza/go-dockerclient"
-	"github.com/stretchr/testify/assert"
+	. "github.com/smartystreets/goconvey/convey"
 )
 
 const (
@@ -16,31 +17,80 @@ const (
 )
 
 func TestCreateNewPool(t *testing.T) {
-	_, err := NewPool("")
-	assert.Nil(t, err)
-}
+	Convey("Given a new pool with an empty endpoint", t, func() {
+		_, err := NewPool("")
 
-func TestRunContainerWithoutImage(t *testing.T) {
-	pool, err := NewPool("")
-	if assert.NoError(t, err) {
-		_, err := pool.RunContainer("some/image", nil, false)
-		assert.Error(t, err)
-	}
-}
-
-func TestRunLocalContainer(t *testing.T) {
-	pool, err := NewPool("")
-	if assert.NoError(t, err) {
-		_, err := pool.RunContainerWithOpts(dc.CreateContainerOptions{
-			Config: &dc.Config{
-				Image: testLocalImage,
-				Cmd:   []string{"-- /bin/echo test"},
-			},
-			HostConfig: &dc.HostConfig{AutoRemove: true},
+		Convey("Should report no error", func() {
+			So(err, ShouldBeNil)
 		})
-		assert.Nil(t, err)
-		assert.Equal(t, 1, len(pool.Containers))
-	}
+	})
+}
+
+func TestRunContainer(t *testing.T) {
+	Convey("Given a new poll with an empty endpoint", t, func() {
+		pool, err := NewPool("")
+		So(err, ShouldBeNil)
+
+		Convey("When starting a container with an unknown local image", func() {
+			_, err := pool.RunContainer("some/image", nil, false)
+
+			Convey("Should report an error", func() {
+				So(err, ShouldNotBeNil)
+			})
+		})
+
+		Convey("When starting a container with a local image", func() {
+			container, err := pool.RunContainerWithOpts(dc.CreateContainerOptions{
+				Config: &dc.Config{
+					Image: testLocalImage,
+					Cmd:   []string{"-- /bin/echo test"},
+				},
+				HostConfig: &dc.HostConfig{AutoRemove: true},
+			})
+
+			Convey("Should run it successfully", func() {
+				So(err, ShouldBeNil)
+				So(len(pool.Containers), ShouldEqual, 1)
+			})
+
+			Reset(func() {
+				pool.Client.RemoveContainer(dc.RemoveContainerOptions{
+					ID:    container.ID,
+					Force: true,
+				})
+			})
+		})
+
+		Convey("When starting a container with a remote image", func() {
+			if testing.Short() {
+				fmt.Println("Skipping")
+				return
+			}
+
+			// Remove the image if already exist.
+			pool.Client.RemoveImageExtended(testRemoteImage, dc.RemoveImageOptions{
+				Force: true,
+			})
+
+			container, err := pool.RunContainer(testRemoteImage, nil, true)
+
+			Convey("Should run it successfully", func() {
+				So(err, ShouldBeNil)
+				So(container.Config.Image, ShouldEqual, testRemoteImage)
+				So(len(pool.Containers), ShouldEqual, 1)
+			})
+
+			Reset(func() {
+				pool.Client.RemoveContainer(dc.RemoveContainerOptions{
+					ID:    container.ID,
+					Force: true,
+				})
+				pool.Client.RemoveImageExtended(testRemoteImage, dc.RemoveImageOptions{
+					Force: true,
+				})
+			})
+		})
+	})
 }
 
 func TestPullPublicImage(t *testing.T) {
@@ -48,53 +98,37 @@ func TestPullPublicImage(t *testing.T) {
 		t.Skip("Skipping TestPullPublicImage")
 	}
 
-	pool, err := NewPool("")
-	if assert.NoError(t, err) {
+	Convey("Given a new pool", t, func() {
+		pool, err := NewPool("")
+		So(err, ShouldBeNil)
+
 		// Remove the image if already exist.
 		pool.Client.RemoveImageExtended(testRemoteImage, dc.RemoveImageOptions{
 			Force: true,
 		})
+		So(err, ShouldBeNil)
 
-		err := pool.PullImage(testRemoteImageWithoutTag)
-		assert.Nil(t, err)
+		Convey("When pulling an existing remote image", func() {
+			err := pool.PullImage(testRemoteImageWithoutTag)
 
-		// Clean up.
-		err = pool.Client.RemoveImageExtended(testRemoteImage, dc.RemoveImageOptions{
-			Force: true,
-		})
-		assert.Nil(t, err)
-	}
-}
+			Convey("Should not report any errors and clean up", func() {
+				So(err, ShouldBeNil)
+			})
 
-func TestRunContainerWithPulling(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping TestRunContainerWithPulling")
-	}
-
-	pool, err := NewPool("")
-	if assert.NoError(t, err) {
-		// Remove the image if already exist.
-		pool.Client.RemoveImageExtended(testRemoteImage, dc.RemoveImageOptions{
-			Force: true,
+			Convey("Should delete image", func() {
+				err := pool.Client.RemoveImageExtended(testRemoteImage, dc.RemoveImageOptions{
+					Force: true,
+				})
+				So(err, ShouldBeNil)
+			})
 		})
 
-		container, err := pool.RunContainer(testRemoteImage, nil, true)
-		if assert.NoError(t, err) {
-			assert.Equal(t, testRemoteImage, container.Config.Image)
-			assert.Equal(t, 1, len(pool.Containers))
-		}
-
-		// Clean up.
-		err = pool.Client.RemoveContainer(dc.RemoveContainerOptions{
-			ID:    container.ID,
-			Force: true,
+		Reset(func() {
+			pool.Client.RemoveImageExtended(testRemoteImage, dc.RemoveImageOptions{
+				Force: true,
+			})
 		})
-		assert.Nil(t, err)
-		err = pool.Client.RemoveImageExtended(testRemoteImage, dc.RemoveImageOptions{
-			Force: true,
-		})
-		assert.Nil(t, err)
-	}
+	})
 }
 
 func testRunMultipleContainers(t *testing.T) {
@@ -108,15 +142,18 @@ func testRunMultipleContainers(t *testing.T) {
 		HostConfig: &dc.HostConfig{AutoRemove: true},
 	}
 
-	pool, err := NewPool("")
-	if assert.NoError(t, err) {
-		containers, err := pool.RunMultipleContainers(
-			[]dc.CreateContainerOptions{opts, opts},
-		)
-		if assert.NoError(t, err) {
-			assert.Equal(t, 2, len(containers))
-		}
-	}
+	Convey("Given a new pool", t, func() {
+		pool, err := NewPool("")
+		So(err, ShouldBeNil)
+
+		Convey("Should run multiple containers without a problem", func() {
+			containers, err := pool.RunMultipleContainers(
+				[]dc.CreateContainerOptions{opts, opts},
+			)
+			So(err, ShouldBeNil)
+			So(len(containers), ShouldEqual, 2)
+		})
+	})
 }
 
 func testRunMultipleContainersReportsFirstError(t *testing.T) {
@@ -134,14 +171,26 @@ func testRunMultipleContainersReportsFirstError(t *testing.T) {
 		HostConfig: &dc.HostConfig{AutoRemove: true},
 	}
 
-	pool, err := NewPool("")
-	if assert.NoError(t, err) {
-		containers, err := pool.RunMultipleContainers(
-			[]dc.CreateContainerOptions{opts1, opts2},
-		)
-		assert.Equal(t, 1, len(containers))
-		assert.NotNil(t, err)
-	}
+	Convey("Given a new pool", t, func() {
+		pool, err := NewPool("")
+		So(err, ShouldBeNil)
+
+		Convey("When starting a validand invalid containers", func() {
+			containers, err := pool.RunMultipleContainers(
+				[]dc.CreateContainerOptions{opts1, opts2},
+			)
+
+			Convey("Should start the first and report error for the second", func() {
+				So(len(containers), ShouldEqual, 1)
+				So(err, ShouldNotBeNil)
+				So(err.Error(), ShouldEqual, "no such image")
+			})
+
+			Reset(func() {
+				pool.PurgeContainers(containers)
+			})
+		})
+	})
 }
 
 func testRunAndPurgeContainers(t *testing.T) {
@@ -156,17 +205,20 @@ func testRunAndPurgeContainers(t *testing.T) {
 		},
 	}
 
-	pool, err := NewPool("")
-	if assert.NoError(t, err) {
-		containers, err := pool.RunMultipleContainers(
-			[]dc.CreateContainerOptions{opts, opts},
-		)
-		if assert.NoError(t, err) {
-			assert.Equal(t, 2, len(containers))
+	Convey("Given a new pool", t, func() {
+		pool, err := NewPool("")
+		So(err, ShouldBeNil)
 
-			err := pool.PurgeContainers(containers)
-			if assert.NoError(t, err) {
-				assert.Equal(t, 0, len(pool.Containers))
+		Convey("When running two containers", func() {
+			containers, err := pool.RunMultipleContainers(
+				[]dc.CreateContainerOptions{opts, opts},
+			)
+			So(err, ShouldBeNil)
+
+			Convey("Should purge them successfully", func() {
+				err := pool.PurgeContainers(containers)
+				So(err, ShouldBeNil)
+				So(len(pool.Containers), ShouldEqual, 0)
 
 				apiContainers, err := pool.Client.ListContainers(
 					dc.ListContainersOptions{
@@ -176,34 +228,45 @@ func testRunAndPurgeContainers(t *testing.T) {
 						},
 					},
 				)
-				if assert.NoError(t, err) {
-					assert.Equal(t, 0, len(apiContainers))
-				}
-			}
-		}
-	}
+				So(err, ShouldBeNil)
+				So(len(apiContainers), ShouldEqual, 0)
+			})
+
+			Reset(func() {
+				pool.PurgeContainers(containers)
+			})
+		})
+	})
 }
 
 func testGetContainer(t *testing.T) {
 	t.Parallel()
 
 	opts := dc.CreateContainerOptions{
-		Name:   "test_get_container",
-		Config: &dc.Config{Image: testLocalImage},
+		Name:       "test_get_container",
+		Config:     &dc.Config{Image: testLocalImage},
+		HostConfig: &dc.HostConfig{AutoRemove: true},
 	}
 
-	pool, err := NewPool("")
-	if assert.NoError(t, err) {
-		container, err := pool.RunContainerWithOpts(opts)
-		if assert.NoError(t, err) {
-			foundContainer, ok := pool.GetContainer("test_get_container")
-			if assert.True(t, ok) {
-				assert.Equal(t, foundContainer.ID, container.ID)
-			}
-		}
+	Convey("Given a new pool", t, func() {
+		pool, err := NewPool("")
+		So(err, ShouldBeNil)
 
-		assert.Nil(t, pool.PurgeContainers(pool.Containers))
-	}
+		Convey("When running a container", func() {
+			container, err := pool.RunContainerWithOpts(opts)
+			So(err, ShouldBeNil)
+
+			Convey("Should get up-to-date state from the pool", func() {
+				foundContainer, ok := pool.GetContainer("test_get_container")
+				So(ok, ShouldBeTrue)
+				So(container.ID, ShouldEqual, foundContainer.ID)
+			})
+
+			Reset(func() {
+				pool.PurgeContainer(container)
+			})
+		})
+	})
 }
 
 func TestRunMultipleContainers(t *testing.T) {
@@ -220,112 +283,121 @@ func TestRunMultipleContainers(t *testing.T) {
 }
 
 func TestCreateNetwork(t *testing.T) {
-	pool, err := NewPool("")
-	if assert.NoError(t, err) {
-		net, err := pool.CreateNetwork("test-net")
-		if assert.NoError(t, err) {
-			assert.Equal(t, 1, len(pool.Networks))
-			assert.Equal(t, "test-net", pool.Networks[0].Name)
+	Convey("Given a new pool", t, func() {
+		pool, err := NewPool("")
+		So(err, ShouldBeNil)
 
-			assert.Nil(t, pool.Client.RemoveNetwork(net.ID))
-		}
-	}
-}
+		Convey("After creating a new network", func() {
+			net, err := pool.CreateNetwork("test-net")
+			So(err, ShouldBeNil)
+			So(len(pool.Networks), ShouldEqual, 1)
+			So("test-net", ShouldEqual, pool.Networks[0].Name)
 
-func TestPurgeNetwork(t *testing.T) {
-	pool, err := NewPool("")
-	if assert.NoError(t, err) {
-		net, err := pool.CreateNetwork("test-net")
-		if assert.NoError(t, err) {
-			assert.Equal(t, 1, len(pool.Networks))
+			Convey("Should be able to get network from the pool", func() {
+				_, err := pool.Client.NetworkInfo(net.ID)
+				So(err, ShouldBeNil)
+			})
 
-			_, err := pool.Client.NetworkInfo(net.ID)
-			if assert.NoError(t, err) {
+			Convey("Should be able to purge the network", func() {
 				err := pool.PurgeNetwork(net)
-				if assert.NoError(t, err) {
-					assert.Equal(t, 0, len(pool.Networks))
+				So(err, ShouldBeNil)
+				So(len(pool.Networks), ShouldEqual, 0)
 
-					_, err := pool.Client.NetworkInfo(net.ID)
-					assert.Error(t, err)
-				}
-			}
-		}
-	}
+				_, err = pool.Client.NetworkInfo(net.ID)
+				So(err, ShouldNotBeNil)
+			})
+		})
+
+		Reset(func() {
+			pool.PurgeAll()
+		})
+	})
 }
 
 func TestPurgeAll(t *testing.T) {
-	pool, err := NewPool("")
-	if !assert.NoError(t, err) {
-		return
-	}
+	Convey("Given a new pool", t, func() {
+		pool, err := NewPool("")
+		So(err, ShouldBeNil)
 
-	_, err = pool.CreateNetwork("test-net")
-	if !assert.NoError(t, err) {
-		return
-	}
+		Convey("After running a container and network", func() {
+			_, err = pool.CreateNetwork("test-net")
+			So(err, ShouldBeNil)
 
-	_, err = pool.RunContainer(testLocalImage, nil, false)
-	if !assert.NoError(t, err) {
-		return
-	}
+			_, err = pool.RunContainer(testLocalImage, nil, false)
+			So(err, ShouldBeNil)
 
-	assert.Equal(t, 1, len(pool.Containers))
-	assert.Equal(t, 1, len(pool.Networks))
+			So(len(pool.Containers), ShouldEqual, 1)
+			So(len(pool.Networks), ShouldEqual, 1)
 
-	if assert.NoError(t, pool.PurgeAll()) {
-		assert.Equal(t, 0, len(pool.Containers))
-		assert.Equal(t, 0, len(pool.Networks))
-	}
+			Convey("Should purge all successfully", func() {
+				err := pool.PurgeAll()
+				So(err, ShouldBeNil)
+				So(len(pool.Containers), ShouldEqual, 0)
+				So(len(pool.Networks), ShouldEqual, 0)
+			})
+		})
+	})
 }
 
 func TestGetPort(t *testing.T) {
-	pool, err := NewPool("")
-	if assert.NoError(t, err) {
-		container, err := pool.RunContainer(testLocalImage, nil, false)
-		if assert.NoError(t, err) {
-			assert.NotEmpty(t, GetPort(container, "8888/tcp"))
-			assert.Empty(t, GetPort(container, "8889/tcp"))
-		}
-		err = pool.PurgeAll()
-		assert.NoError(t, err)
-	}
-}
+	Convey("Given a new pool", t, func() {
+		pool, err := NewPool("")
+		So(err, ShouldBeNil)
 
-func TestGetServiceAddr(t *testing.T) {
-	pool, err := NewPool("")
-	if assert.NoError(t, err) {
-		container, err := pool.RunContainerWithOpts(dc.CreateContainerOptions{
-			Config: &dc.Config{
-				Image:        testLocalImage,
-				ExposedPorts: map[dc.Port]struct{}{"8888/tcp": {}},
-			},
-			HostConfig: &dc.HostConfig{
-				PortBindings: map[dc.Port][]dc.PortBinding{
-					"8888/tcp": []dc.PortBinding{
-						dc.PortBinding{HostPort: "8888"},
+		Convey("When running a container", func() {
+			container, err := pool.RunContainerWithOpts(dc.CreateContainerOptions{
+				Config: &dc.Config{
+					Image:        testLocalImage,
+					ExposedPorts: map[dc.Port]struct{}{"8888/tcp": {}},
+				},
+				HostConfig: &dc.HostConfig{
+					PortBindings: map[dc.Port][]dc.PortBinding{
+						"8888/tcp": []dc.PortBinding{
+							dc.PortBinding{HostPort: "8888"},
+						},
 					},
 				},
-			},
+			})
+			So(err, ShouldBeNil)
+
+			Convey("Should get port successfully", func() {
+				So(GetPort(container, "8888/tcp"), ShouldNotBeEmpty)
+			})
+
+			Convey("Should get addr successfully", func() {
+				So(GetServiceAddr(container, "8888/tcp"), ShouldEqual, "http://127.0.0.1:8888")
+			})
+
+			Convey("Should clean uo", func() {
+				err := pool.PurgeAll()
+				So(err, ShouldBeNil)
+			})
 		})
-		if assert.NoError(t, err) {
-			addr := GetServiceAddr(container, "8888/tcp")
-			assert.Equal(t, "http://127.0.0.1:8888", addr)
-		}
-		err = pool.PurgeAll()
-		assert.NoError(t, err)
-	}
+
+		Reset(func() {
+			pool.PurgeAll()
+		})
+	})
 }
 
 func TestRetry(t *testing.T) {
-	now := time.Now().Unix()
-	calls := 0
-	err := Retry(5*time.Second, func() error {
-		calls++
-		if time.Now().Unix()-now > 1 {
-			return nil
-		}
-		return errors.New("Not ready")
+	Convey("Given a time and zero calls", t, func() {
+		now := time.Now().Unix()
+		calls := 0
+
+		Convey("When running a retry", func() {
+			err := Retry(5*time.Second, func() error {
+				calls++
+				if time.Now().Unix()-now > 1 {
+					return nil
+				}
+				return errors.New("Not ready")
+			})
+			So(err, ShouldBeNil)
+
+			Convey("Should increment value", func() {
+				So(calls, ShouldBeGreaterThan, 1)
+			})
+		})
 	})
-	assert.NoError(t, err)
-	assert.True(t, calls > 1)
 }
