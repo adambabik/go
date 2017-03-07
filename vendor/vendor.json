@@ -27,6 +27,24 @@
 			"revisionTime": "2016-12-02T02:35:07Z"
 		},
 		{
+			"checksumSHA1": "FnvGCFzM67RzilE7YdHuv1ynMIY=",
+			"path": "github.com/adambabik/go-collections",
+			"revision": "a6eabae4b41ca3b25dd9f3b3bb16a2a577e93cc7",
+			"revisionTime": "2017-03-07T19:37:54Z"
+		},
+		{
+			"checksumSHA1": "c4keajCrz5nCsuFsasoiqdWmtO4=",
+			"path": "github.com/adambabik/go-collections/dockertest",
+			"revision": "a6eabae4b41ca3b25dd9f3b3bb16a2a577e93cc7",
+			"revisionTime": "2017-03-07T19:37:54Z"
+		},
+		{
+			"checksumSHA1": "m6QMy+u/IX6knzP28DqMn4sdLSw=",
+			"path": "github.com/cenk/backoff",
+			"revision": "b02f2bbce11d7ea6b97f282ef1771b0fe2f65ef3",
+			"revisionTime": "2016-10-20T19:44:10Z"
+		},
+		{
 			"checksumSHA1": "2Fy1Y6Z3lRRX1891WF/+HT4XS2I=",
 			"path": "github.com/dgrijalva/jwt-go",
 			"revision": "9ed569b5d1ac936e6494082958d63a6aa4fff99a",
@@ -195,10 +213,10 @@
 			"revisionTime": "2016-11-30T22:15:31Z"
 		},
 		{
-			"checksumSHA1": "iJGBIviTWCrbijKBBaF3uXdMKsE=",
+			"checksumSHA1": "DG6hthmfdziVR23DRCqZkaYTDKc=",
 			"path": "github.com/fsouza/go-dockerclient",
-			"revision": "773542a4a30a7d9b5a3ddfca64e593508299ddda",
-			"revisionTime": "2016-12-05T03:49:21Z"
+			"revision": "318513eb1ab27495afbc67f671ba1080513d8aa0",
+			"revisionTime": "2017-03-07T14:16:36Z"
 		},
 		{
 			"checksumSHA1": "P3zGmsNjW8m15a+nks4FdVpFKwE=",
